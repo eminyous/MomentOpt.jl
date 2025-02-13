@@ -8,9 +8,9 @@ mutable struct ModelInfo
     cct::Int
     variable_names::Vector{AbstractString}
     constraint_names::Vector{AbstractString}
-    obj_dict::Dict{Symbol, Any}
+    obj_dict::Dict{Symbol,Any}
     function ModelInfo()
-        new(0, 0, AbstractString[], AbstractString[], Dict{Symbol, Any}())
+        return new(0, 0, AbstractString[], AbstractString[], Dict{Symbol,Any}())
     end
 end
 
@@ -20,16 +20,19 @@ end
 This type contains the data of the model.
 """
 mutable struct ModelData
-    variables::Dict{Int, AbstractGMPVariable}
-    constraints::Dict{Int, AbstractGMPConstraint}
+    variables::Dict{Int,AbstractGMPVariable}
+    constraints::Dict{Int,AbstractGMPConstraint}
     objective_sense::MOI.OptimizationSense
     objective_function::AbstractMomentExpressionLike
     max_degree::Int
     function ModelData()
-        new(Dict{Int, AbstractGMPVariable}(),
-            Dict{Int, AbstractGMPConstraint}(),
+        return new(
+            Dict{Int,AbstractGMPVariable}(),
+            Dict{Int,AbstractGMPConstraint}(),
             MOI.FEASIBILITY_SENSE,
-            zero(MomentExpr{Int}), 0)
+            zero(MomentExpr{Int}),
+            0,
+        )
     end
 end
 
@@ -45,16 +48,16 @@ export PRIMAL_RELAXATION_MODE, DUAL_STRENGTHEN_MODE
 
 abstract type AbstractPrimalMode <: AbstractApproximationMode end
 abstract type AbstractDualMode <: AbstractApproximationMode end
-struct PRIMAL_RELAXATION_MODE <: AbstractPrimalMode end 
+struct PRIMAL_RELAXATION_MODE <: AbstractPrimalMode end
 struct DUAL_STRENGTHEN_MODE <: AbstractDualMode end
 
-struct VarApprox{S, T}
+struct VarApprox{S,T}
     value::MM.Measure
     p_just::S
     d_just::T
 end
 
-struct ConApprox{S, T}
+struct ConApprox{S,T}
     p_res::S
     dual::T
 end
@@ -62,10 +65,15 @@ end
 mutable struct ApproximationInfo
     mode::AbstractApproximationMode
     degree::Int
-    approx_vrefs::Dict{Int, VarApprox}
-    approx_crefs::Dict{Int, ConApprox}
+    approx_vrefs::Dict{Int,VarApprox}
+    approx_crefs::Dict{Int,ConApprox}
     function ApproximationInfo()
-        new(DUAL_STRENGTHEN_MODE(), 0, Dict{Int, VarApprox}(), Dict{Int, ConApprox}())
+        return new(
+            DUAL_STRENGTHEN_MODE(),
+            0,
+            Dict{Int,VarApprox}(),
+            Dict{Int,ConApprox}(),
+        )
     end
 end
 
@@ -79,11 +87,11 @@ This JuMP.AbstractModel is able to model linear obtimization problems where the 
 """
 mutable struct GMPModel <: AbstractGMPModel
     model_info::ModelInfo
-    model_data::ModelData    
+    model_data::ModelData
     approximation_info::ApproximationInfo
     approximation_model::JuMP.Model
     function GMPModel()
-        new(ModelInfo(), ModelData(), ApproximationInfo(), Model())
+        return new(ModelInfo(), ModelData(), ApproximationInfo(), Model())
     end
 end
 Base.broadcastable(model::GMPModel) = Ref(model)
@@ -106,7 +114,7 @@ export approximation_degree
 approximation_degree(model::GMPModel) = approximation_info(model).degree
 
 function JuMP.set_optimizer(model::GMPModel, optimizer)
-    set_optimizer(approximation_model(model), optimizer)
+    return set_optimizer(approximation_model(model), optimizer)
 end
 
 function GMPModel(optimizer_factory)
@@ -119,18 +127,23 @@ JuMP.solver_name(model::GMPModel) = solver_name(approximation_model(model))
 JuMP.num_variables(model::GMPModel) = length(gmp_variables(model))
 JuMP.object_dictionary(model::GMPModel) = model_info(model).obj_dict
 JuMP.raw_status(model::GMPModel) = raw_status(approximation_model(model))
-JuMP.set_optimize_hook(model::GMPModel, f) = (approximation_model(model).optimize_hook = f)
+function JuMP.set_optimize_hook(model::GMPModel, f)
+    return (approximation_model(model).optimize_hook = f)
+end
 JuMP.solve_time(model::GMPModel) = solve_time(approximation_model(model))
 
 function JuMP.set_optimizer_attribute(model::GMPModel, args...)
-    set_optimizer_attribute(approximation_model(model), args...)
+    return set_optimizer_attribute(approximation_model(model), args...)
 end
 function JuMP.set_optimizer_attributes(model::GMPModel, args...)
-    set_optimizer_attributes(approximation_model(model), args...)
+    return set_optimizer_attributes(approximation_model(model), args...)
 end
 
 function JuMP.get_optimizer_attribute(model::GMPModel, name::String)
-    return get_optimizer_attribute(approximation_model(model), MOI.RawParameter(name))
+    return get_optimizer_attribute(
+        approximation_model(model),
+        MOI.RawParameter(name),
+    )
 end
 
 function JuMP.set_silent(model::GMPModel)
@@ -141,12 +154,15 @@ function JuMP.unset_silent(model::GMPModel)
     return MOI.set(approximation_model(model), MOI.Silent(), false)
 end
 
-JuMP.time_limit_sec(model::GMPModel) = time_limit_sec(approximation_model(model))
+function JuMP.time_limit_sec(model::GMPModel)
+    return time_limit_sec(approximation_model(model))
+end
 
 function update_degree(m::GMPModel, degree::Int)
     if model_data(m).max_degree < degree
         model_data(m).max_degree = degree
-        approximation_info(m).degree = maximum([approximation_info(m).degree, 2*ceil(degree/2)])
+        approximation_info(m).degree =
+            maximum([approximation_info(m).degree, 2 * ceil(degree / 2)])
     end
 end
 
@@ -157,12 +173,17 @@ export set_approximation_degree
 Manually set the degree of the approximation to a custom value. The value cannot be less than the degree of the data. 
 """
 function set_approximation_degree(model::GMPModel, degree::Int)
-    if approximation_info(model).degree > degree && model_data(model).max_degree > degree
-        approximation_info(model).degree = minimum([approximation_info(model).degree, 2*ceil(model_data(model).max_degree/2)])
+    if approximation_info(model).degree > degree &&
+       model_data(model).max_degree > degree
+        approximation_info(model).degree = minimum([
+            approximation_info(model).degree,
+            2 * ceil(model_data(model).max_degree / 2),
+        ])
 
         @warn "Requested approximation degree $degree is too low to cover all data. The approximation degree has been set to the minimal value possible and now is $(approximation_info(model).degree)."
     else
-        approximation_info(model).degree = maximum([approximation_info(model).degree, 2*ceil(degree/2)])
+        approximation_info(model).degree =
+            maximum([approximation_info(model).degree, 2 * ceil(degree / 2)])
     end
     return nothing
 end
@@ -176,7 +197,7 @@ Possible values for mode are:
   * PRIMAL_RELAXATION_MODE()
   * DUAL_STRENGTHEN_MODE() (default)
   """
-function set_approximation_mode(m::GMPModel, mode::AbstractApproximationMode) 
+function set_approximation_mode(m::GMPModel, mode::AbstractApproximationMode)
     approximation_info(m).mode = mode
     return m
 end
@@ -210,10 +231,14 @@ function JuMP.variable_by_name(m::GMPModel, name::String)
 end
 
 function JuMP.is_valid(m::GMPModel, vref::GMPVariableRef)
-    return (m === owner_model(vref) &&  index(vref) in keys(gmp_variables(m)))
+    return (m === owner_model(vref) && index(vref) in keys(gmp_variables(m)))
 end
 
-function JuMP.add_variable(m::GMPModel, v::AbstractGMPVariable, name::String = "")
+function JuMP.add_variable(
+    m::GMPModel,
+    v::AbstractGMPVariable,
+    name::String = "",
+)
     vref = GMPVariableRef(m, v)
     gmp_variables(m)[index(vref)] = v
     push!(variable_names(m), name)
@@ -231,7 +256,6 @@ function JuMP.delete(m::GMPModel, vref::GMPVariableRef)
     variable_names(m)[index(vref)] = ""
     return nothing
 end
-
 
 function vref_object(vref::GMPVariableRef)
     return gmp_variables(owner_model(vref))[vref.index].v
@@ -273,16 +297,24 @@ end
 
 # referencing constraints 
 function JuMP.is_valid(m::GMPModel, cref::GMPConstraintRef)
-    return (m === cref.model &&
-            cref.index in keys(gmp_constraints(m)))
+    return (m === cref.model && cref.index in keys(gmp_constraints(m)))
 end
 
-function JuMP.constraint_string(print_mode, ref::GMPConstraintRef; in_math_mode = false)
-    return JuMP.constraint_string(print_mode, JuMP.name(ref), constraint_object(ref), in_math_mode = in_math_mode)
+function JuMP.constraint_string(
+    print_mode,
+    ref::GMPConstraintRef;
+    in_math_mode = false,
+)
+    return JuMP.constraint_string(
+        print_mode,
+        JuMP.name(ref),
+        constraint_object(ref);
+        in_math_mode = in_math_mode,
+    )
 end
 
 function Base.show(io::IO, ref::GMPConstraintRef)
-    print(io, constraint_string(MIME"text/plain"(), ref))
+    return print(io, constraint_string(MIME"text/plain"(), ref))
 end
 
 function JuMP.constraint_object(cref::GMPConstraintRef)
@@ -297,8 +329,11 @@ function JuMP.moi_set(cref::GMPConstraintRef)
     return moi_set(constraint_object(cref))
 end
 
-function JuMP.add_constraint(m::GMPModel, c::AbstractGMPConstraint,
-                             name::String = "")
+function JuMP.add_constraint(
+    m::GMPModel,
+    c::AbstractGMPConstraint,
+    name::String = "",
+)
     model_info(m).cct += 1
     cref = GMPConstraintRef(m, model_info(m).cct, shape(c))
     gmp_constraints(m)[cref.index] = c
@@ -307,11 +342,26 @@ function JuMP.add_constraint(m::GMPModel, c::AbstractGMPConstraint,
     return cref
 end
 
-function JuMP.add_constraint(m::GMPModel, c::ScalarConstraint{<:Union{AffMomentExpr, MomentExpr}, <:MOI.AbstractScalarSet}, name::String = "")
-    add_constraint(m, MomentConstraint(jump_function(c), moi_set(c)), name)
+function JuMP.add_constraint(
+    m::GMPModel,
+    c::ScalarConstraint{
+        <:Union{AffMomentExpr,MomentExpr},
+        <:MOI.AbstractScalarSet,
+    },
+    name::String = "",
+)
+    return add_constraint(
+        m,
+        MomentConstraint(jump_function(c), moi_set(c)),
+        name,
+    )
 end
 
-function JuMP.add_constraint(m::GMPModel, c::ScalarConstraint{<:Union{AffMeasExpr, MeasExpr}, <:MOI.AbstractScalarSet}, name::String = "")
+function JuMP.add_constraint(
+    m::GMPModel,
+    c::ScalarConstraint{<:Union{AffMeasExpr,MeasExpr},<:MOI.AbstractScalarSet},
+    name::String = "",
+)
     @assert moi_set(c) isa MOI.EqualTo "Only support equality measure constraints."
     @assert MOI.constant(moi_set(c)) == 0 "A measure cannot be equal to a number. "
     return add_constraint(m, MeasureConstraint(jump_function(c)), name)
@@ -335,7 +385,8 @@ end
 JuMP.name(cref::GMPConstraintRef) = constraint_names(cref.model)[cref.index]
 
 function JuMP.set_name(cref::GMPConstraintRef, name::String)
-    idx = findall(x -> x == JuMP.name(cref), constraint_names(owner_model(cref)))
+    idx =
+        findall(x -> x == JuMP.name(cref), constraint_names(owner_model(cref)))
     if length(idx) == 1
         delete!(object_dictionary(owner_model(cref)), Symbol(JuMP.name(cref)))
     end
@@ -350,20 +401,20 @@ function JuMP.constraint_by_name(m::GMPModel, name::String)
     elseif length(idx) > 1
         throw(ErrorException("Multiple constraints have the name $name."))
     else
-        c = object_dictionary(m)[Symbol(name)]        
+        c = object_dictionary(m)[Symbol(name)]
         return GMPConstraintRef(m, first(idx), JuMP.shape(c))
     end
 end
 
 function JuMP.show_constraints_summary(io::IO, m::GMPModel)
     n = length(gmp_constraints(m))
-    print(io, "Constraint", JuMP._plural(n), ": ", n)
+    return print(io, "Constraint", JuMP._plural(n), ": ", n)
 end
 
 function JuMP.constraints_string(print_mode, m::GMPModel)
     strings = String[]
     # Sort by creation order, i.e. MOI.ConstraintIndex value
-    constraints = sort(collect(gmp_constraints(m)), by = c -> first(c))
+    constraints = sort(collect(gmp_constraints(m)); by = c -> first(c))
     for (index, constraint) in constraints
         push!(strings, JuMP.constraint_string(print_mode, constraint))
     end
@@ -371,17 +422,20 @@ function JuMP.constraints_string(print_mode, m::GMPModel)
 end
 
 # Objective
-function JuMP.set_objective(m::GMPModel, sense::MOI.OptimizationSense,
-                            f::AbstractMomentExpressionLike)
+function JuMP.set_objective(
+    m::GMPModel,
+    sense::MOI.OptimizationSense,
+    f::AbstractMomentExpressionLike,
+)
     model_data(m).objective_sense = sense
     model_data(m).objective_function = f
-    update_degree(m, degree(f))    
+    return update_degree(m, degree(f))
 end
 
 JuMP.objective_sense(m::GMPModel) = model_data(m).objective_sense
 
 function JuMP.set_objective_sense(m::GMPModel, sense::MOI.OptimizationSense)
-    model_data(m).objective_sense = sense
+    return model_data(m).objective_sense = sense
 end
 
 JuMP.objective_function(m::GMPModel) = model_data(m).objective_function
@@ -396,8 +450,11 @@ function JuMP.objective_function(m::GMPModel, FT::Type)
 end
 
 function JuMP.show_objective_function_summary(mode, m::GMPModel)
-    println(mode, "Objective function type: ",
-            JuMP.objective_function_type(m))
+    return println(
+        mode,
+        "Objective function type: ",
+        JuMP.objective_function_type(m),
+    )
 end
 
 function JuMP.objective_function_string(mode, m::GMPModel)
@@ -411,14 +468,14 @@ function JuMP.show_backend_summary(io::IO, model::GMPModel)
     println(io, "Maximum degree of data: ", model_degree(model))
     println(io, "Degree for approximation ", approximation_degree(model))
     # The last print shouldn't have a new line
-    print(io, "Solver for approximation: ", solver_name(model))
+    return print(io, "Solver for approximation: ", solver_name(model))
 end
 
 # get value
 
 function _is_approximated(vref::GMPVariableRef)
     if haskey(approx_vrefs(owner_model(vref)), index(vref))
-        return true 
+        return true
     else
         return false
     end
@@ -431,7 +488,7 @@ Returns the approximation sequence of the referenced GMPObject.
 """
 function JuMP.value(vref::GMPVariableRef)
     @assert _is_approximated(vref) "$vref has not been approximated yet"
-    return approx_vrefs(owner_model(vref))[index(vref)].value 
+    return approx_vrefs(owner_model(vref))[index(vref)].value
 end
 
 export primal_justification
@@ -443,7 +500,7 @@ end
 
 export dual_justification
 function dual_justification(vref::GMPVariableRef)
-    @assert _is_approximated(vref) "$vref has not been approximated yet"    
+    @assert _is_approximated(vref) "$vref has not been approximated yet"
     return approx_vrefs(owner_model(vref))[index(vref)].d_just
 end
 
@@ -460,19 +517,24 @@ function approximation(vref::GMPVariableRef, m::MP.AbstractPolynomialLike)
         return value(as[m])
     else
         coefs, basis = MB.change_basis(m, approx_basis(vref_object(vref)))
-        return sum( c*value(as[b]) for (c,b) in zip(coefs, basis)) 
+        return sum(c * value(as[b]) for (c, b) in zip(coefs, basis))
     end
 end
 
 function approximation(vref::GMPVariableRef, m::Number)
-    return approximation(vref,  m*_mono_one(variables(vref_object(vref))))
+    return approximation(vref, m * _mono_one(variables(vref_object(vref))))
 end
 
 JuMP.value(me::MomentExpr) = sum(approximation(m, c) for (c, m) in me)
 
 export residual
-residual(cref::GMPConstraintRef) = approx_crefs(owner_model(cref))[index(cref)].p_res
+function residual(cref::GMPConstraintRef)
+    return approx_crefs(owner_model(cref))[index(cref)].p_res
+end
 
-function JuMP.dual(cref::GMPConstraintRef, ::Union{MomentConstraintShape, MeasureConstraintShape})
+function JuMP.dual(
+    cref::GMPConstraintRef,
+    ::Union{MomentConstraintShape,MeasureConstraintShape},
+)
     return approx_crefs(owner_model(cref))[index(cref)].dual
 end

@@ -4,11 +4,11 @@ using MosekTools
 optimizer = Mosek.Optimizer
 
 @polyvar x y
-q1 = 1-x^2-y^2
-q2 = x^3-y^2
+q1 = 1 - x^2 - y^2
+q2 = x^3 - y^2
 
 m = GMPModel()
-@variable m μ Meas([x, y], support = @set(q1 >=0 &&  q2 >= 0))
+@variable m μ Meas([x, y], support = @set(q1 >= 0 && q2 >= 0))
 @constraint m Mom(1, μ) == 1
 @objective m Min Mom(x, μ)
 
@@ -23,18 +23,16 @@ println("Extraction MultivariateMoments")
 Xi = atomic(μ)
 println(Xi)
 
-
 println("Extraction MultivariateSeries")
 Xi = let
     using MultivariateSeries
     mu = measure(μ)
     y = moment_value.(moments(mu))
     L = monomials(mu)
-    _, Xi = decompose(sum(series(yi,l) for (l, yi) in zip(L, y)))
+    _, Xi = decompose(sum(series(yi, l) for (l, yi) in zip(L, y)))
     Xi
 end
 println(Xi)
-
 
 """
 MomentTools uses smaller localization matrices. 

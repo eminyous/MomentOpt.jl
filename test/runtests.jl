@@ -5,7 +5,6 @@ using DynamicPolynomials
 using SCS
 import LinearAlgebra: Symmetric
 
-
 include("objects.jl")
 include("defaultmeasures.jl")
 include("variables.jl")

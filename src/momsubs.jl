@@ -8,12 +8,18 @@ end
 
 MOI.constant(ms::MomentSubstitute) = ms.momexpr
 
-function Base.:(==)(set1::MomentSubstitute{T}, set2::MomentSubstitute{T}) where T 
+function Base.:(==)(
+    set1::MomentSubstitute{T},
+    set2::MomentSubstitute{T},
+) where {T}
     return constant(set1) == constant(set2)
 end
-JuMP.sense_to_set(::Function, ::Val{:(>>)}) = MomentSubstitute(zero(MomentExpr{Int, Int}))
-MOIU.shift_constant(set::MomentSubstitute, value) = MomentSubstitute(MOI.constant(set) + value)
-
+function JuMP.sense_to_set(::Function, ::Val{:(>>)})
+    return MomentSubstitute(zero(MomentExpr{Int,Int}))
+end
+function MOIU.shift_constant(set::MomentSubstitute, value)
+    return MomentSubstitute(MOI.constant(set) + value)
+end
 
 """
     MomentSubstitutionShape 
@@ -28,7 +34,7 @@ JuMP.reshape_set(set::MOI.AbstractScalarSet, ::MomentSubstitutionShape) = set
     MomentSubstitution{C, T} <: AbstractGMPConstraint
 
 """
-struct MomentSubstitution{C, T} <: AbstractGMPConstraint
+struct MomentSubstitution{C,T} <: AbstractGMPConstraint
     func::C
     set::MomentSubstitute{T}
 end
@@ -37,12 +43,14 @@ JuMP.jump_function(con::MomentSubstitution) = con.func
 JuMP.moi_set(con::MomentSubstitution) = con.set
 JuMP.shape(con::MomentSubstitution) = MomentSubstitutionShape()
 
-
-function JuMP.build_constraint(_error::Function, func::MomentExpr,
-                               set::MomentSubstitute)
+function JuMP.build_constraint(
+    _error::Function,
+    func::MomentExpr,
+    set::MomentSubstitute,
+)
 
     # check that func is an actual moment
     # check that set does not involve a moment in the measure of func with higher degree
-        
+
     return MomentSubstitution(func, set)
 end

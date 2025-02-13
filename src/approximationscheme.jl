@@ -1,19 +1,22 @@
 abstract type AbstractApproximationScheme end
 
 struct MeasureData
-    objective
-    constraints
+    objective::Any
+    constraints::Any
 end
 
-struct SchemePart{T<:Union{JuMP.PSDCone, MOI.AbstractSet}}
+struct SchemePart{T<:Union{JuMP.PSDCone,MOI.AbstractSet}}
     polynomial::MP.AbstractPolynomialLike
     monomials::MB.AbstractPolynomialBasis
     moi_set::T
 end
 
-set_type(::SchemePart{T}) where T = T
+set_type(::SchemePart{T}) where {T} = T
 
-function dual_scheme_variable(model::JuMP.Model, sp::SchemePart{<:MOI.Nonnegatives})
+function dual_scheme_variable(
+    model::JuMP.Model,
+    sp::SchemePart{<:MOI.Nonnegatives},
+)
     vref = @variable model lower_bound = 0
     return vref
 end
@@ -28,16 +31,23 @@ function dual_scheme_variable(model::JuMP.Model, sp::SchemePart{PSDCone})
     return vref
 end
 
-function primal_scheme_part(sp::SchemePart{<:Union{MOI.Nonnegatives, MOI.Zeros}}, moment_vars::MM.Measure)
-    return MM.expectation.(monomials(sp.monomials)*sp.polynomial, moment_vars)
+function primal_scheme_part(
+    sp::SchemePart{<:Union{MOI.Nonnegatives,MOI.Zeros}},
+    moment_vars::MM.Measure,
+)
+    return MM.expectation.(monomials(sp.monomials) * sp.polynomial, moment_vars)
 end
 
-function localization_matrix(mons::MB.AbstractPolynomialBasis, poly::MP.AbstractPolynomialLike{S}, moment_vars::MM.Measure{T}) where {S,T}
+function localization_matrix(
+    mons::MB.AbstractPolynomialBasis,
+    poly::MP.AbstractPolynomialLike{S},
+    moment_vars::MM.Measure{T},
+) where {S,T}
     data = zeros(MA.promote_sum_mul(S, T), length(mons), length(mons))
     mons = monomials(mons)
     for (i, moni) in enumerate(mons)
         for j in i:length(mons)
-            data[i, j] = MM.expectation(moni*mons[j]*poly, moment_vars)
+            data[i, j] = MM.expectation(moni * mons[j] * poly, moment_vars)
         end
     end
     return Symmetric(data)
@@ -47,7 +57,11 @@ function primal_scheme_part(sp::SchemePart{PSDCone}, moment_vars::MM.Measure)
     return localization_matrix(sp.monomials, sp.polynomial, moment_vars)
 end
 
-function primal_scheme_constraint(model::JuMP.Model, sp::SchemePart, moment_vars::MM.Measure)
+function primal_scheme_constraint(
+    model::JuMP.Model,
+    sp::SchemePart,
+    moment_vars::MM.Measure,
+)
     cref = @constraint model primal_scheme_part(sp, moment_vars) in sp.moi_set
     return cref
 end
@@ -58,8 +72,15 @@ struct Scheme
     monomials::Vector{<:AbstractPolynomialLike}
 end
 
-
-approximation_scheme(model::JuMP.AbstractModel, v, md::MeasureData) = approximation_scheme(approx_scheme(v.v), bsa_set(v.v), variables(v.v), approximation_degree(model), md)
+function approximation_scheme(model::JuMP.AbstractModel, v, md::MeasureData)
+    return approximation_scheme(
+        approx_scheme(v.v),
+        bsa_set(v.v),
+        variables(v.v),
+        approximation_degree(model),
+        md,
+    )
+end
 
 export PutinarScheme
 """
@@ -70,15 +91,23 @@ Return a Putinar Approximation Scheme.
 struct PutinarScheme <: AbstractApproximationScheme
     sparsity::SumOfSquares.Sparsity.Pattern
     basis_type::Type{<:MB.AbstractPolynomialBasis}
-    function PutinarScheme(; sparsity = Sparsity.NoPattern(), basis = MonomialBasis)
-        new(sparsity, basis)
+    function PutinarScheme(;
+        sparsity = Sparsity.NoPattern(),
+        basis = MonomialBasis,
+    )
+        return new(sparsity, basis)
     end
 end
 
 # this is very inefficient but does what I want.
-function approximation_scheme(scheme::PutinarScheme, K::AbstractBasicSemialgebraicSet, vars::Vector{<: MP.AbstractVariable}, d::Int, md::MeasureData)
-
-    ineqs = [prod(vars.^0)]
+function approximation_scheme(
+    scheme::PutinarScheme,
+    K::AbstractBasicSemialgebraicSet,
+    vars::Vector{<:MP.AbstractVariable},
+    d::Int,
+    md::MeasureData,
+)
+    ineqs = [prod(vars .^ 0)]
 
     if !isempty(inequalities(K))
         ineqs = [ineqs..., inequalities(K)...]
@@ -91,54 +120,71 @@ function approximation_scheme(scheme::PutinarScheme, K::AbstractBasicSemialgebra
     elseif scheme.sparsity isa Sparsity.Variable
         G = SumOfSquares.Certificate.Sparsity.CEG.LabelledGraph{eltype(vars)}()
         for mono in MP.monomials(md.objective)
-            SumOfSquares.Certificate.Sparsity.CEG.add_clique!(G, MP.effective_variables(mono))
+            SumOfSquares.Certificate.Sparsity.CEG.add_clique!(
+                G,
+                MP.effective_variables(mono),
+            )
         end
         for (i, con) in md.constraints
             for poly in con
                 if !(poly isa Number)
-                    SumOfSquares.Certificate.Sparsity.CEG.add_clique!(G, MP.effective_variables(poly))
+                    SumOfSquares.Certificate.Sparsity.CEG.add_clique!(
+                        G,
+                        MP.effective_variables(poly),
+                    )
                 end
             end
         end
-        _, cliques =  SumOfSquares.Certificate.Sparsity.CEG.chordal_extension(G, SumOfSquares.Certificate.Sparsity.CEG.GreedyFillIn())
+        _, cliques = SumOfSquares.Certificate.Sparsity.CEG.chordal_extension(
+            G,
+            SumOfSquares.Certificate.Sparsity.CEG.GreedyFillIn(),
+        )
         for clique in cliques
-            sort!(clique, rev=true)
+            sort!(clique; rev = true)
             unique!(clique)
         end
     end
 
     schemeparts = SchemePart[]
-    monos = [prod(vars.^0)]
+    monos = [prod(vars .^ 0)]
 
     for clique in cliques
         for ineq in ineqs
-            if effective_variables(ineq) ⊆  clique
-
-                deg = Int(floor((d-maxdegree(ineq))/2))
+            if effective_variables(ineq) ⊆ clique
+                deg = Int(floor((d - maxdegree(ineq)) / 2))
                 mons = maxdegree_basis(scheme.basis_type, clique, deg)
-                if length(mons) == 1 
+                if length(mons) == 1
                     moiset = MOI.Nonnegatives(1)
                 else
                     moiset = PSDCone()
                 end
                 push!(schemeparts, SchemePart(ineq, mons, moiset))
-                append!(monos, monomials(maxdegree_basis(scheme.basis_type, clique, 2*deg)))
+                append!(
+                    monos,
+                    monomials(
+                        maxdegree_basis(scheme.basis_type, clique, 2 * deg),
+                    ),
+                )
             end
         end
         for eq in eqs
-            if effective_variables(eq) ⊆  clique
-
-                deg = d-maxdegree(eq)
+            if effective_variables(eq) ⊆ clique
+                deg = d - maxdegree(eq)
                 mons = maxdegree_basis(scheme.basis_type, clique, deg)
-                push!(schemeparts, SchemePart(eq, mons, MOI.Zeros(length(mons))))
+                push!(
+                    schemeparts,
+                    SchemePart(eq, mons, MOI.Zeros(length(mons))),
+                )
                 append!(monos, monomials(mons))
             end
         end
     end
-    return Scheme(schemeparts, one(polynomial_type(eltype(vars))), unique!(monos))
+    return Scheme(
+        schemeparts,
+        one(polynomial_type(eltype(vars))),
+        unique!(monos),
+    )
 end
-
-
 
 export SchmuedgenScheme
 """
@@ -150,14 +196,22 @@ Return a Schmuedgen Approximation Scheme.
 struct SchmuedgenScheme <: AbstractApproximationScheme
     sparsity::SumOfSquares.Sparsity.Pattern
     basis_type::Type{<:MB.AbstractPolynomialBasis}
-    function SchmuedgenScheme(; sparsity = Sparsity.NoPattern(), basis = MonomialBasis)
-        new(sparsity, basis)
+    function SchmuedgenScheme(;
+        sparsity = Sparsity.NoPattern(),
+        basis = MonomialBasis,
+    )
+        return new(sparsity, basis)
     end
 end
 
-function approximation_scheme(scheme::SchmuedgenScheme, K::AbstractBasicSemialgebraicSet, vars::Vector{<: MP.AbstractVariable}, d::Int, md::MeasureData)
-
-    ineqs = [prod(vars.^0)]
+function approximation_scheme(
+    scheme::SchmuedgenScheme,
+    K::AbstractBasicSemialgebraicSet,
+    vars::Vector{<:MP.AbstractVariable},
+    d::Int,
+    md::MeasureData,
+)
+    ineqs = [prod(vars .^ 0)]
 
     if !isempty(inequalities(K))
         ineqs = [ineqs..., inequalities(K)...]
@@ -166,24 +220,24 @@ function approximation_scheme(scheme::SchmuedgenScheme, K::AbstractBasicSemialge
     eqs = equalities(K)
 
     schemeparts = SchemePart[]
-    monos = [prod(vars.^0)]
+    monos = [prod(vars .^ 0)]
 
     i = 1
     ineq = ineqs[i]
-    deg = Int(floor((d-maxdegree(ineq))/2))
-    mons = maxdegree_basis(scheme.basis_type, vars, deg) 
+    deg = Int(floor((d - maxdegree(ineq)) / 2))
+    mons = maxdegree_basis(scheme.basis_type, vars, deg)
     if length(mons) == 1
         moiset = MOI.Nonnegatives(1)
     else
         moiset = PSDCone()
     end
     push!(schemeparts, SchemePart(ineq, mons, moiset))
-    append!(monos, monomials(maxdegree_basis(scheme.basis_type, vars, 2*deg)))
+    append!(monos, monomials(maxdegree_basis(scheme.basis_type, vars, 2 * deg)))
 
-    for i = 2:length(ineqs)
+    for i in 2:length(ineqs)
         ineq = ineqs[i]
-        deg = Int(floor((d-maxdegree(ineq))/2))
-        mons = maxdegree_basis(scheme.basis_type, vars, deg) 
+        deg = Int(floor((d - maxdegree(ineq)) / 2))
+        mons = maxdegree_basis(scheme.basis_type, vars, deg)
         if length(mons) == 1
             moiset = MOI.Nonnegatives(1)
         else
@@ -191,12 +245,15 @@ function approximation_scheme(scheme::SchmuedgenScheme, K::AbstractBasicSemialge
         end
 
         push!(schemeparts, SchemePart(ineq, mons, moiset))
-        append!(monos, monomials(maxdegree_basis(scheme.basis_type, vars, 2*deg)))
+        append!(
+            monos,
+            monomials(maxdegree_basis(scheme.basis_type, vars, 2 * deg)),
+        )
 
-        for j = i+1:length(ineqs)
+        for j in i+1:length(ineqs)
             if maxdegree(ineqs[i]) + maxdegree(ineqs[j]) <= d
-                ineq = ineqs[i]*ineqs[j]
-                deg = Int(floor((d-maxdegree(ineq))/2))
+                ineq = ineqs[i] * ineqs[j]
+                deg = Int(floor((d - maxdegree(ineq)) / 2))
                 mons = maxdegree_basis(scheme.basis_type, vars, deg)
                 if length(mons) == 1
                     moiset = MOI.Nonnegatives(1)
@@ -204,16 +261,25 @@ function approximation_scheme(scheme::SchmuedgenScheme, K::AbstractBasicSemialge
                     moiset = PSDCone()
                 end
                 push!(schemeparts, SchemePart(ineq, mons, moiset))
-                append!(monos, monomials(maxdegree_basis(scheme.basis_type, vars, 2*deg)))
+                append!(
+                    monos,
+                    monomials(
+                        maxdegree_basis(scheme.basis_type, vars, 2 * deg),
+                    ),
+                )
             end
         end
     end
 
     for eq in eqs
-        deg = d-maxdegree(eq)
+        deg = d - maxdegree(eq)
         mons = maxdegree_basis(scheme.basis_type, vars, deg)
         push!(schemeparts, SchemePart(eq, mons, MOI.Zeros(length(mons))))
         append!(monos, monomials(mons))
     end
-    return Scheme(schemeparts, one(polynomial_type(eltype(vars))), unique!(monos))
+    return Scheme(
+        schemeparts,
+        one(polynomial_type(eltype(vars))),
+        unique!(monos),
+    )
 end

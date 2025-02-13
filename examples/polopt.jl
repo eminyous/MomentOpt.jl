@@ -29,19 +29,19 @@ using MosekTools
 @polyvar x y
 
 # Polynomial to optimize 
-f = x^4*y^2 + x^2*y^4 -3x^2*y^2 + 1 
+f = x^4 * y^2 + x^2 * y^4 - 3x^2 * y^2 + 1
 
 # Define semi algebraic support for the measure 
-K = @set(1-x^2 >=0 && 1-y^2 >=0)
+K = @set(1 - x^2 >= 0 && 1 - y^2 >= 0)
 
 gmp = GMPModel(Mosek.Optimizer)
 set_approximation_mode(gmp, PRIMAL_RELAXATION_MODE())
 # Add a variable measure to the model
-@variable gmp μ Meas([x,y], support = K)
+@variable gmp μ Meas([x, y], support = K)
 
 # Define the objective 
 @objective gmp Min Mom(f, μ)
- 
+
 # Constrain μ to be a probablity measure
 @constraint gmp Mom(1, μ) == 1
 
@@ -53,7 +53,7 @@ println("Relaxation degree: 6")
 println("Lower bound: $(objective_value(gmp))")
 
 # We try to extract atoms from the relaxed moment sequence of μ
-opt = atomic( μ, tol = 1e-03)
+opt = atomic(μ; tol = 1e-03)
 println()
 
 # As we could not extract atoms from the solution, we increase the relaxation degree
@@ -63,6 +63,6 @@ optimize!(gmp)
 
 println("Relaxation degree: 8")
 println("Lower bound: $(objective_value(gmp))")
-opt = atomic( μ, tol = 1e-03)
+opt = atomic(μ; tol = 1e-03)
 
 # This time the atom extraction succeeds, which proves optimality of the moment relaxation. 

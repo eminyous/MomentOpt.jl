@@ -1,28 +1,28 @@
-    function JuMP.objective_value(model::GMPModel) 
+function JuMP.objective_value(model::GMPModel)
     if approximation_mode(model) isa AbstractPrimalMode
         return objective_value(approximation_model(model))
-    elseif  approximation_mode(model) isa AbstractDualMode
+    elseif approximation_mode(model) isa AbstractDualMode
         return dual_objective_value(approximation_model(model))
     end
 end
-function JuMP.dual_objective_value(model::GMPModel) 
+function JuMP.dual_objective_value(model::GMPModel)
     if approximation_mode(model) isa AbstractPrimalMode
         return dual_objective_value(approximation_model(model))
-    elseif  approximation_mode(model) isa AbstractDualMode
+    elseif approximation_mode(model) isa AbstractDualMode
         return objective_value(approximation_model(model))
     end
 end
-function JuMP.primal_status(model::GMPModel) 
+function JuMP.primal_status(model::GMPModel)
     if approximation_mode(model) isa AbstractPrimalMode
         return primal_status(approximation_model(model))
-    elseif  approximation_mode(model) isa AbstractDualMode
+    elseif approximation_mode(model) isa AbstractDualMode
         return dual_status(approximation_model(model))
     end
 end
-function JuMP.dual_status(model::GMPModel) 
+function JuMP.dual_status(model::GMPModel)
     if approximation_mode(model) isa AbstractPrimalMode
         return dual_status(approximation_model(model))
-    elseif  approximation_mode(model) isa AbstractDualMode
+    elseif approximation_mode(model) isa AbstractDualMode
         return primal_status(approximation_model(model))
     end
 end
@@ -38,21 +38,22 @@ export atomic
 Tries to exctract the atomic support of a measure. 
 """
 function atomic(vref::GMPVariableRef; tol = 1e-3)
-	optmeas = atomic_measure(moment_matrix(vref), tol)
-	if typeof(optmeas) == Nothing
+    optmeas = atomic_measure(moment_matrix(vref), tol)
+    if typeof(optmeas) == Nothing
         return nothing
-	else
-        optimizers = Dict{Int, Vector{Float64}}()
-		for i = 1:length(optmeas.atoms)
-		    optimizers[i] = optmeas.atoms[i].center
-		end
-		return optimizers
-	end
+    else
+        optimizers = Dict{Int,Vector{Float64}}()
+        for i in 1:length(optmeas.atoms)
+            optimizers[i] = optmeas.atoms[i].center
+        end
+        return optimizers
+    end
 end
 
-
-function min_val(x::Pair{<:Vector{<:MP.AbstractVariable}, <:Vector{<:Number}},
-                 poly::AbstractPolynomialLike)
+function min_val(
+    x::Pair{<:Vector{<:MP.AbstractVariable},<:Vector{<:Number}},
+    poly::AbstractPolynomialLike,
+)
     p = subs(poly, x)
     t = first(variables(p))
     set = algebraic_set([differentiate(p, t)])
@@ -63,7 +64,10 @@ end
 function christoffel(vref::GMPVariableRef; regpar = 1e-8)
     M = moment_matrix(vref)
     eva, eve = eigen(MM.value_matrix(M))
-    return sum( (dot(eve[:, i] / √(eva[i] + regpar), M.basis.monomials))^2 for i = 1:length(eva))
+    return sum(
+        (dot(eve[:, i] / √(eva[i] + regpar), M.basis.monomials))^2 for
+        i in 1:length(eva)
+    )
 end
 
 export graph
@@ -72,8 +76,12 @@ export graph
 
     Tries to extract the graph of a scalar function f such that [indep_vars, f(indep_vars)] is the support of vref.
 """
-function graph(vref::GMPVariableRef, indep_vars::Vector{<:MP.AbstractVariable}; regpar = 1e-8)
-    ch =  christoffel(vref; regpar = regpar)
+function graph(
+    vref::GMPVariableRef,
+    indep_vars::Vector{<:MP.AbstractVariable};
+    regpar = 1e-8,
+)
+    ch = christoffel(vref; regpar = regpar)
     @assert length(setdiff(variables(ch), indep_vars)) == 1 "Only scalar functions supported for graph."
     return x -> min_val(indep_vars => x, ch)
 end

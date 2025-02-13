@@ -1,4 +1,4 @@
-abstract type AbstractGMPVariable  <: JuMP.AbstractVariable end
+abstract type AbstractGMPVariable <: JuMP.AbstractVariable end
 abstract type AbstractGMPVariableRef <: JuMP.AbstractVariableRef end
 
 export GMPVariable
@@ -15,7 +15,12 @@ end
 object(v::GMPVariable) = v.v
 object_type(v) = typeof(object(v))
 
-function JuMP.build_variable(_error::Function, info::JuMP.VariableInfo, m::VariableGMPObject; extra_kwargs...)
+function JuMP.build_variable(
+    _error::Function,
+    info::JuMP.VariableInfo,
+    m::VariableGMPObject;
+    extra_kwargs...,
+)
     return GMPVariable(m)
 end
 
@@ -37,4 +42,6 @@ Base.broadcastable(v::GMPVariableRef) = Ref(v)
 Base.iszero(::GMPVariableRef) = false
 JuMP.isequal_canonical(v::GMPVariableRef, w::GMPVariableRef) = v == w
 JuMP.index(vref::GMPVariableRef) = vref.index
-Base.:(==)(v::GMPVariableRef, w::GMPVariableRef) = v.model === w.model && v.index == w.index
+function Base.:(==)(v::GMPVariableRef, w::GMPVariableRef)
+    return v.model === w.model && v.index == w.index
+end

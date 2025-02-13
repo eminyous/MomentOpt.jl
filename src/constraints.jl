@@ -3,7 +3,8 @@ abstract type AbstractGMPShape <: JuMP.AbstractShape end
 abstract type AbstractGMPConstraint <: JuMP.AbstractConstraint end
 
 function Base.:(==)(c1::AbstractGMPConstraint, c2::AbstractGMPConstraint)
-    return JuMP.jump_function(c1) == JuMP.jump_function(c2) && JuMP.moi_set(c1) == JuMP.moi_set(c2)
+    return JuMP.jump_function(c1) == JuMP.jump_function(c2) &&
+           JuMP.moi_set(c1) == JuMP.moi_set(c2)
 end
 
 # MomentConstraint
@@ -27,7 +28,13 @@ struct MomentConstraint <: AbstractGMPConstraint
 end
 
 function MomentConstraint(ae::AffMomentExpr, set)
-    return MomentConstraint(ae.expr, MOI.Utilities.shift_constant(set, -convert(typeof(MOI.constant(set)), ae.cons)))
+    return MomentConstraint(
+        ae.expr,
+        MOI.Utilities.shift_constant(
+            set,
+            -convert(typeof(MOI.constant(set)), ae.cons),
+        ),
+    )
 end
 
 JuMP.jump_function(con::MomentConstraint) = con.func
@@ -38,10 +45,10 @@ function JuMP.function_string(mode, mc::MomentConstraint)
     return string(mc.func)
 end
 
-JuMP.in_set_string(mode, m::AnalyticMeasure) = "= "*sprint(show, m)
+JuMP.in_set_string(mode, m::AnalyticMeasure) = "= " * sprint(show, m)
 
 function Base.show(io::IO, con::MomentConstraint)
-    print(io, JuMP.constraint_string(MIME"text/plain"(), con))
+    return print(io, JuMP.constraint_string(MIME"text/plain"(), con))
 end
 
 """
@@ -54,7 +61,6 @@ JuMP.reshape_vector(expr::MeasExpr, ::MeasureConstraintShape) = expr
 JuMP.reshape_set(set::AnalyticMeasure, ::MeasureConstraintShape) = set
 
 #TODO dual shape for MeasureConstraintShape
-
 
 """
     MeasureConstraint
@@ -77,7 +83,7 @@ function JuMP.function_string(mode, mc::MeasureConstraint)
 end
 
 function Base.show(io::IO, con::MeasureConstraint)
-    print(io, JuMP.constraint_string(MIME"text/plain"(), con))
+    return print(io, JuMP.constraint_string(MIME"text/plain"(), con))
 end
 
 """
@@ -96,11 +102,15 @@ end
 Base.broadcastable(v::GMPConstraintRef) = Ref(v)
 Base.iszero(::GMPConstraintRef) = false
 JuMP.isequal_canonical(v::GMPConstraintRef, w::GMPConstraintRef) = v == w
-Base.:(==)(v::GMPConstraintRef, w::GMPConstraintRef) = v.model === w.model && v.index == w.index
+function Base.:(==)(v::GMPConstraintRef, w::GMPConstraintRef)
+    return v.model === w.model && v.index == w.index
+end
 #Base.copy(v::GMPConstraintRef) = v
 #Base.copy(v::GMPConstraintRef, m::JuMP.AbstractModel) = GMPConstraintRef(m, v.index, v.shape)
 JuMP.owner_model(cref::GMPConstraintRef) = cref.model
 JuMP.shape(cref::GMPConstraintRef) = cref.shape
 JuMP.index(cref::GMPConstraintRef) = cref.index
-cref_object(cref::GMPConstraintRef) = gmp_constraints(owner_model(cref))[index(cref)]
+function cref_object(cref::GMPConstraintRef)
+    return gmp_constraints(owner_model(cref))[index(cref)]
+end
 JuMP.dual(vref::GMPConstraintRef) = JuMP.dual(vref, shape(vref))

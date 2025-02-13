@@ -5,9 +5,9 @@ optimizer = Mosek.Optimizer
 
 X = @polyvar x y
 
-p1 = x*y-1
-p2 = x^2-2
-q  = 2*x-x^2
+p1 = x * y - 1
+p2 = x^2 - 2
+q = 2 * x - x^2
 
 m = GMPModel()
 @variable m μ Meas([x, y], support = @set(p1 == 0 && p2 == 0 && q >= 0))
@@ -17,7 +17,6 @@ m = GMPModel()
 set_approximation_degree(m, 6)
 set_optimizer(m, optimizer)
 optimize!(m)
-
 
 mu = measure(μ)
 
@@ -30,6 +29,6 @@ Xi = atomic(μ)
 if Xi isa Nothing
     println("Using MultivariateSeries for extraction")
     using MultivariateSeries
-    _, Xi = decompose(sum(series(yi,l) for (l,yi) in zip(L, y)))
+    _, Xi = decompose(sum(series(yi, l) for (l, yi) in zip(L, y)))
 end
 Xi
