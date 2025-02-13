@@ -10,10 +10,10 @@ struct ApproximationFunction{BT<:MB.AbstractPolynomialBasis}
     basis::Type{BT}
 end
 
-function (x::ApproximationFunction)(p::AbstractPolynomialLike)
-    basis = maxdegree_basis(x.basis, x.vars, maxdegree(p))
+function (f::ApproximationFunction)(p::AbstractPolynomialLike)
+    basis = maxdegree_basis(f.basis, f.vars, maxdegree(p))
     coefs, basis = MB.change_basis(p, basis)
-    return dot(coefs, x.func.(basis))
+    return dot(coefs, f.func.(basis))
 end
 
 # Linear operations on ApproximationFunctions
