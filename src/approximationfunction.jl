@@ -22,14 +22,14 @@ function compatible(f1::ApproximationFunction, f2::ApproximationFunction)
 end
 
 function Base.sum(v::Vector{<:ApproximationFunction})
-    f1 = first(v)
-    for f2 in v[2:end]
-        @assert compatible(f1, f2) "Only functions acting on same basis can be added."
+    f = first(v)
+    for g in v[2:end]
+        @assert compatible(f, g) "Only functions acting on same basis can be added."
     end
     return ApproximationFunction(
-        x -> sum(f.func(x) for f in v),
-        f1.vars,
-        f1.basis,
+        x -> sum(g.func(x) for g in v),
+        f.vars,
+        f.basis_type,
     )
 end
 
