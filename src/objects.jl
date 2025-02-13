@@ -80,7 +80,7 @@ end
 function constructor(::Type{AnalyticMeasure{S,T}}) where {S,T}
     return (x, y, z) -> AnalyticMeasure(x, y, z)
 end
-Base.show(io::IO, μ::AnalyticMeasure) = print(io, "AnalyticMeasure")
+Base.show(io::IO, ::AnalyticMeasure) = print(io, "AnalyticMeasure")
 
 export VariableMeasure
 
