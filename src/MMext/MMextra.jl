@@ -39,7 +39,7 @@ function integrate(p::AbstractPolynomialLike, vref::GMPVariableRef)
     return MM.expectation(p, measure(vref))
 end
 
-function integrate(model::GMPModel, me::MomentExpr)
+function integrate(::GMPModel, me::MomentExpr)
     integral = 0
     for (c, m) in me
         integral += integrate(c, m)
