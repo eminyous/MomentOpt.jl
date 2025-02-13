@@ -1,8 +1,8 @@
 function MB.change_basis(
     p::MP.AbstractPolynomialLike,
-    Basis::Type{<:MB.AbstractPolynomialBasis},
+    B::Type{<:MB.AbstractPolynomialBasis},
 )
-    basis = MB.maxdegree_basis(Basis, variables(p), maxdegree(p))
+    basis = MB.maxdegree_basis(B, variables(p), maxdegree(p))
     return MB.change_basis(p, basis)
 end
 
