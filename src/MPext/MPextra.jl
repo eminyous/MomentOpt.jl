@@ -6,7 +6,7 @@ MP.maxdegree(::Number) = 0
 Retruns a pair of vectors (coefs, mons), where coefs is a vector of AbstractPolynomialLike and mons is a vector of monomials in vars such that dot(coef, mons) == p 
 """
 function polypoly(
-    p::AbstractPolynomialLike,
+    p::MP.AbstractPolynomialLike,
     vars::Vector{<:MP.AbstractVariable},
 )
     @assert vars ⊆ variables(p)
