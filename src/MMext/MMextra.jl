@@ -15,7 +15,7 @@ function MM.moment_matrix(vref::GMPVariableRef, X)
     return MM.MomentMatrix{Float64}(getmom, X)
 end
 
-function MM.moment_matrix(vref::GMPVariableRef; basis = MonomialBasis)
+function MM.moment_matrix(vref::GMPVariableRef; basis = MB.MonomialBasis)
     X = monomials(
         maxdegree_basis(
             basis,
