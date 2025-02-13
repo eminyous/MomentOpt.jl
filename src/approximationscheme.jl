@@ -15,7 +15,7 @@ set_type(::SchemePart{T}) where {T} = T
 
 function dual_scheme_variable(
     model::JuMP.Model,
-    sp::SchemePart{<:MOI.Nonnegatives},
+    ::SchemePart{<:MOI.Nonnegatives},
 )
     vref = @variable model lower_bound = 0
     return vref
@@ -209,7 +209,7 @@ function approximation_scheme(
     K::AbstractBasicSemialgebraicSet,
     vars::Vector{<:MP.AbstractVariable},
     d::Int,
-    md::MeasureData,
+    ::MeasureData,
 )
     ineqs = [prod(vars .^ 0)]
 
