@@ -45,7 +45,7 @@ end
 
 Abstract type to represent measures in MomentOpt. Implementation of subtypes should implement MOI.get functions for `::Variables`, `::Support`, `::ApproximationType`, and `::GMPBasis`.
 if get(m, ApproximationType()) == EXACT_APPROXIMATION, the measure m should have a field m.moment_function::Function. 
-By default there are four implementations of AbstractGMPMeasure:
+By default there are two implementations of AbstractGMPMeasure:
   * [AnalyticMeasure](@ref) :
   * [VariableMeasure](@ref) :
 
