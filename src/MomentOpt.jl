@@ -37,6 +37,7 @@ include("approximationscheme.jl")
 
 include("objects.jl")
 include("variables.jl")
+include("measure.jl")
 include("defaultmeasures.jl")
 
 include("measexpr.jl")
