@@ -28,7 +28,6 @@ Reexport.@reexport using MultivariateMoments
 
 import MultivariateBases as MB
 Reexport.@reexport using MultivariateBases
-
 include("MBext/MBextra.jl")
 
 abstract type AbstractGMPModel <: JuMP.AbstractModel end
