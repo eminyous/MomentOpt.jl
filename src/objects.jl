@@ -7,6 +7,13 @@ MP.variables(m::AbstractGMPObject) = m.variables
 approx_basis(m::AbstractGMPObject) = m.approx_basis
 
 """
+    _mono_one(vars)
+
+returns the monomial 1 defined on vars. 
+"""
+_mono_one(vars::Vector{<:MP.AbstractVariable}) = prod(var^0 for var in vars)
+
+"""
     covering_basis(t::AbstractGMPObject, p::MP.AbstractPolynomialLike)
     covering_basis(t::AbstractGMPObject, p::Number)
 
@@ -16,14 +23,6 @@ function covering_basis(t::AbstractGMPObject, p::MP.AbstractPolynomialLike)
     @assert variables(p) ⊆ variables(t) "Object does not act on $(variables(p))."
     return MB.basis_covering_monomials(approx_basis(t), monomials(p))
 end
-
-"""
-    _mono_one(vars)
-
-returns the monomial 1 defined on vars. 
-"""
-_mono_one(vars::Vector{<:MP.AbstractVariable}) = prod(var^0 for var in vars)
-
 function covering_basis(
     t::AbstractGMPObject,
     p::Union{Number,AbstractJuMPScalar},
